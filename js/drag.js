@@ -2,39 +2,33 @@
  * Created by chengwb on 2016/8/27.
  * demo 功能待扩充
  */
-(function($, undefined){
+(function(global, $, undefined){
     'use strict';
 
-    var Drag = function(el, options) {
+    global.panel = global.panel || {};
+
+    var PanelTemplate = function(options) {
         this.options = options;
-        this.$el = $(el);
-        this.$el_ = this.$el.clone();
 
         this.init();
     };
 
-    Drag.prototype.init = function() {
-        //初始化地图，包括图片等，设置为不可选不可拖动
-        this.initMap();
+    PanelTemplate.prototype.init = function() {
+        this.initCell();
         this.initEvent();
     };
 
-    Drag.prototype.initMap = function() {
-        //设置地图不能被拖动
-        this.$el.attr('ondragstart', 'return false');
-        this.$el.find('.map_pic').attr('ondragstart', "return false");
-        //添加提示框
-        this.$el.append('<span class="drag_tip"></span>');
-
-        this.range = this.range || {};
-        this.position = this.position || {};
-        this.range.width = this.$el.width();
-        this.range.height = this.$el.height();
-        this.position.top = this.$el.offset().top;
-        this.position.left = this.$el.offset().left;
+    PanelTemplate.prototype.initCell = function() {
+        this.cell = this.cell || {};
+        //待考虑ie小数点
+        this.cell.width = this.options.width / this.options.xCells;
+        this.cell.height = this.options.height / this.options.yCells;
     };
 
-    Drag.prototype.initEvent = function() {
+    PanelTemplate.prototype.initWarp = function() {
+    };
+
+    PanelTemplate.prototype.initEvent = function() {
         var self = this;
         var point;
 
@@ -128,15 +122,9 @@
                 $(window.document).off('mouseup');
             });
         });
-
-        //self.$el.on('dblclick', '.drag_point', function(event){
-        //    if(self.options.onClick && typeof self.options.onClick === 'function') {
-        //        self.options.onClick(event);
-        //    }
-        //});
     };
 
-    Drag.prototype.addPoint = function(points) {
+    PanelTemplate.prototype.addPoint = function(points) {
         var top = 0;
         var left = 0;
 
@@ -153,19 +141,16 @@
         }
 
         this.$el.find('.drag_point').css({
-            width: this.options.width || Drag.DEFAULTS.width + 'px',
-            height: this.options.height || Drag.DEFAULTS.height + 'px'
+            width: this.options.width || PanelTemplate.DEFAULTS.width + 'px',
+            height: this.options.height || PanelTemplate.DEFAULTS.height + 'px'
         });
     };
 
-
-    Drag.DEFAULTS = {
-        width: 10,
-        height: 10,
-        center: {
-            top: 5,
-            left: 5
-        },
+    PanelTemplate.DEFAULTS = {
+        width: 1200,
+        height: 900,
+        xCells: 4,
+        yCells: 3,
         onClick: function(e) {
             return false;
         },
@@ -178,17 +163,17 @@
     };
 
     var allowedMethods = [
-        'addPoint'
+        'createModule'
     ];
 
-    $.fn.cwbDrag = function(option) {
+    $.fn.insertPanel = function(option) {
         var value,
             args = Array.prototype.slice.call(arguments, 1);
 
         this.each(function () {
             var $this = $(this),
                 data = $this.data('drag'),
-                options = $.extend({}, Drag.DEFAULTS, $this.data(),
+                options = $.extend({}, PanelTemplate.DEFAULTS, $this.data(),
                     typeof option === 'object' && option);
 
             if (typeof option === 'string') {
@@ -208,7 +193,7 @@
             }
 
             if (!data) {
-                $this.data('drag', (data = new Drag(this, options)));
+                $this.data('drag', (data = new PanelTemplate(this, options)));
             }
         });
 
