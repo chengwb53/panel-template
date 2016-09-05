@@ -1,9 +1,8 @@
 /**
  * Created by chengwb on 2016/9/4.
  */
-(function(global, $){
+(function(global, $, undefined){
     function Module(option) {
-        this.id = '';//自动生成uuid
         this.x = 0;
         this.y = 0;
         this.width = 1;
@@ -11,7 +10,7 @@
     }
 
     function PanelTemplate() {
-        var id = '';
+        var id = '';//自动生成uuid
         var width = 1;
         var height = 1;
         var cell = {
