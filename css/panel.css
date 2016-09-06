@@ -1,0 +1,118 @@
+@charset "utf-8";
+/* CSS Document */
+html, body, div, span, applet, object, iframe, h1, h2, h3, h4, h5, h6, p, dd, dl, dt, li, ol, ul,input,select,button,textarea { padding:0; margin:0; border:none;}
+input,button,select,textarea,a,img{outline:none; }/*去掉超链接或按钮点击时出现的虚线框黄色边框*/
+::-moz-focus-inner{border:0px;}/*火狐的私有属性去掉点击时边框*/
+body {font-size:12px; width:100%;  font-family:"Microsoft YaHei","Arial", "SimSun";}
+html{ width:100%;}
+a img {	border:none;}
+ul, ul li, ol li, li {	list-style:none;}
+table {	border-collapse: collapse;border-spacing:0;}
+input, textarea {border: 0;}
+.clearfix:after {visibility: hidden;display: block;font-size: 0;content: ".";clear: both;height: 0;}
+* html .clearfix {zoom: 1;}
+*:first-child + html .clearfix {zoom: 1;}
+.fl {	float:left;}
+.fr {	float:right;}
+.none{	display:none;}
+
+.warp {
+    overflow: hidden;
+}
+
+.operate_box {
+    width: 170px;
+    height: 100%;
+    padding: 30px 20px 0;
+    background-color: #284476;
+    float: left;
+}
+.label {
+    height: 36px;
+    font: bold 14px/36px "Microsoft YaHei";
+    display: block;
+    color: #fff;
+}
+.label_pre {
+    height: 36px;
+    font: normal 14px/36px "Microsoft YaHei";
+    color: #fff;
+}
+.btn {
+    position: relative;
+    width: 125px;
+    height: 36px;
+    left: 36px;
+    margin-bottom: 15px;
+    font: normal 14px/36px "Microsoft YaHei";
+    background-color: #253958;
+    color: #fff;
+}
+.btn:hover {
+    background-color: #162235;
+}
+.input {
+    width: 105px;
+    height: 36px;
+    padding: 0 10px;
+    margin-bottom: 15px;
+    font: normal 14px/36px "Microsoft YaHei";
+    background-color: #253958;
+    color: #fff;
+}
+
+.panel_template {
+    position: relative;
+    width: auto;
+    height: 100%;
+    float: left;
+    text-align: center;
+    background: url('../img/bg.png') no-repeat center center;
+}
+.panel_box {
+    position: relative;
+    display: inline-block;
+    z-index: 1;
+    overflow: hidden;
+}
+.cell {
+    position: relative;
+    display: block;
+    float: left;
+    border: 3px solid #fff;
+    border-radius: 5px;
+    background-color: #f7f7f7;
+    z-index: 1;
+}
+.module {
+    position: absolute;
+    border: 3px solid #fff;
+    border-radius: 5px;
+    display: block;
+    background-color: #dedede;
+    z-index: 2;
+    cursor: pointer;
+}
+.module.drag {
+    z-index: 99;
+    cursor: pointer;
+    border: 1px solid #bbb;
+}
+.delete_btn {
+    position: absolute;
+    width: 15px;
+    height: 15px;
+    top: 5px;
+    right: 5px;
+    border: 1px solid #fff;
+    -moz-border-radius: 8px;
+    -webkit-border-radius: 8px;
+    border-radius: 8px;
+    font: 12px/16px "Microsoft YaHei";
+    color: #fff;
+    background-color: #b1b1b1;
+    display: none;
+}
+.module:hover .delete_btn {
+    display: block;
+ }

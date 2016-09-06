@@ -3,33 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
+    <link href="css/panel.css" rel="stylesheet">
 </head>
 <body>
-<div class="operate_box">
-    <button>设置</button>
-    <button>新建模板</button>
-</div>
-<div>
-    <table border="1" cellpadding="0" cellspacing="0">
-        <tr>
-            <td></td>
-            <td></td>
-            <td></td>
-        </tr>
-        <tr>
-            <td></td>
-            <td></td>
-            <td></td>
-        </tr>
-    </table>
+<div class="warp">
+    <div class="operate_box">
+    </div>
+    <div id="panelTemp" class="panel_template">
+    </div>
 </div>
 
 <script src="./js/html5.js"></script>
 <script src="./js/jquery-1.8.3.min.js"></script>
 <script src="./js/jquery.tmpl.min.js"></script>
-<script src="./js/drag.js"></script>
 <script src="./js/panel.template.js"></script>
+
+<script type="text/template" id="createPanelTemp">
+    <label class="label">模板比例设置</label>
+    <label class="label_pre" for="xRate">X轴：</label><input id="xRate" class="input" type="text" name="xRate" value="4">
+    <label class="label_pre" for="yRate">Y轴：</label><input id="yRate" class="input" type="text" name="yRate" value="3">
+    <button id="createTemplate" class="btn" type="button">创建模板</button>
+</script>
+<script type="text/template" id="createModuleTemp">
+    <label class="label">模块比例设置</label>
+    <label class="label_pre" for="xRate">X轴：</label><input id="xRate" class="input" type="text" name="xRate" value="1">
+    <label class="label_pre" for="yRate">Y轴：</label><input id="yRate" class="input" type="text" name="yRate" value="1">
+    <button id="createModule" class="btn" type="button">创建模块</button>
+    <button id="clearTemplate" class="btn" type="button">清空模板</button>
+    <button id="saveTemplate" class="btn" type="button">保存模板</button>
+    <button id="deleteTemplate" class="btn" type="button">删除模板</button>
+</script>
+<script type="text/template" id="cellTemp">
+    {{each list}}
+    <div class="cell"></div>
+    {{/each}}
+</script>
+
 <script>
+    var panelW = 0;
+    var panelH = 0;
+    var cellW = 0;
+    var cellH = 0;
+    var panelTemp;
+    $(function(){
+        renderCreateTempBox();
+        panelW = $(window.document).width() - 210;
+        panelH = $(window.document).height();
+        $('.operate_box').css({height: $(window.document).height() - 30});
+        $('#panelTemp').css({
+            width: panelW,
+            height: panelH
+        });
+
+        $('.operate_box').on('click', '#createTemplate', function() {
+            var xCells = $('#xRate').val();
+            var yCells = $('#yRate').val();
+
+            renderCreateModuleBox();
+            //创建对象
+            panelTemp = new PanelTemplate('#panelTemp', {
+                xCells: xCells,
+                yCells: yCells
+            });
+        });
+        $('.operate_box').on('click', '#createModule', function() {
+            //设置是否可拖动，是否可置换
+            var x = $('#xRate').val();
+            var y = $('#yRate').val();
+
+            panelTemp.createMoudle({
+                xCells: x,
+                yCells: y,
+                drag: true,
+                swap: true
+            });
+        });
+        $('.operate_box').on('click', '#saveTemplate', function() {
+            //保存
+        });
+        $('.operate_box').on('click', '#clearTemplate', function() {
+            //清空模板上的模块
+            panelTemp.clean();
+        });
+        $('.operate_box').on('click', '#deleteTemplate', function() {
+            //清空数据
+            panelTemp.delete();
+            renderCreateTempBox();
+        });
+        $('#panelTemp').on('click', '.delete_btn', function() {
+            //保存
+            var index = $(this).parents('.module').eq(0).attr('data-id');
+            panelTemp.deleteMoudle(index);
+        });
+
+        $(window).on('resize', function() {
+//            panelW = $(window.document).width() - 210;
+//            panelH = $(window.document).height();
+//            $('.operate_box').css({height: $(window.document).height() - 30});
+//            $('#panelTemp').css({
+//                width: panelW,
+//                height: panelH
+//            });
+
+//            panelTemp.refresh();
+        })
+    });
+
+    function renderCreateTempBox() {
+        $('.operate_box').empty();
+        $('#createPanelTemp').tmpl().appendTo('.operate_box');
+    }
+    function renderBg() {
+        $('#panelTemp').empty();
+        $('<img class="bg_img" src="./img/bg.png">').appendTo('#panelTemp');
+    }
+
+    function renderCreateModuleBox() {
+        $('.operate_box').empty();
+        $('#createModuleTemp').tmpl().appendTo('.operate_box');
+    }
+
+    var moduleIndex = 0;
+    function addModule(x, y) {
+        $('<div class="module" data-id="' + moduleIndex + '"><span class="delete_btn">x</span></div>').appendTo('#panelTemp');
+
+        //设置位置,智能计算
+        $('.module[data-id=' + moduleIndex + ']').css({
+            width: cellW * x - 6,
+            height: cellH * y - 6,
+            top: 0,
+            left: 0
+        });
+
+        moduleIndex++;
+    }
 
 </script>
 </body>
