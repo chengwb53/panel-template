@@ -25,20 +25,54 @@
 		var width = 1200;
 		var height = 900;
 		var position = {};
-		var modules = [];
+		var modules = {};
 		var moduleIndex = 0;
 		var self = this;
+
+		modules.length = 0;
 
 		//面板信息，cell的使用情况，映射模块的位置
 		var panelUsage = {
 			info: [],
-			getValidModuleRate: function() {
-				//返回所有可用比例,如果一种比例有多个位置可用则只取第一个
-				var moduleRate = [];
+			getValidPosition: function(xCells, yCells) {
+				var self = this;
+				//返回可用位置,如果一种有多个位置可用则只取第一个
+				var position = {
+					x: 0,
+					y: 0
+				};
 
+				if(modules.length === 0) {
+					return position;
+				}
 
+				function isValid(firstCell) {
+					for(var y = 0; y < yCells; y++) {
+						for(var x = 0; x < xCells; x++) {
+							if(self.info[firstCell.yIndex + y][firstCell.xIndex + x].useInfo.moduleId) {
+								return false;
+							}
+						}
+					}
 
-				return moduleRate;
+					return true;
+				}
+
+				var firstCell;
+				for(var y = 0; y <= options.yCells - yCells; y++) {
+					for(var x = 0; x <= options.xCells - xCells; x++) {
+						var cell = this.info[y][x];
+						if (!cell.useInfo.moduleId) {
+							firstCell = cell;
+
+							if(isValid(firstCell)){
+								return firstCell;
+							}
+						}
+					}
+				}
+
+				return null;
 			},
 			getNearestCell: function(point) {
 				var nearCell = point;
@@ -48,11 +82,9 @@
 					return Math.sqrt(Math.pow(pointA.x - pointB.x, 2) + Math.pow(pointA.y - pointB.y, 2));
 				}
 
-				for(var y = 0; y < this.info.length; y++) {
-					var yAxis = this.info[y];
-
-					for(var x = 0; x < yAxis.length; x++) {
-						var cell = yAxis[x];
+				for(var y = 0; y < options.yCells; y++) {
+					for(var x = 0; x < options.xCells; x++) {
+						var cell = this.info[y][x];
 						var distance = countDistance(point, cell);
 
 						if(distance < minDistance) {
@@ -358,8 +390,6 @@
 				'data-drag': module.drag ? 'true' : 'false',
 				'data-swap': module.swap ? 'true' : 'false'
 			});
-
-			modules[module.id] = module;
 		}
 
 		function renderModules() {
@@ -378,17 +408,27 @@
 		};
 
 		this.createMoudle = function (params) {
-			var x = 0;
-			var y = 0;
+			var position = {
+				x: 0,
+				y: 0,
+				xIndex: 0,
+				yIndex: 0
+			};
+
+			if(params.xCells > options.xCells || params.yCells > options.yCells) {
+				return -1;
+			}
 
 			if (modules.length !== 0) {
 				//根据大小计算放置位置，如果没有合适位置则提示
+				position = panelUsage.getValidPosition(params.xCells, params.yCells);
+				console.log(position);
+				if(!position) {
+					return 0;
+				}
 			}
 
 			var moduleId = 'module' + moduleIndex;
-			//wait,创建模块时，设置初始位置
-			panelUsage.getValidModuleRate();
-
 			var module = {
 				id: moduleId,
 				xCells: params.xCells,
@@ -397,13 +437,15 @@
 				height: height / options.yCells * params.yCells,
 				drag: params.drag,
 				swap: params.swap,
-				x: x,
-				y: y,
-				xIndex: 0,
-				yIndex: 0
+				x: position.x,
+				y: position.y,
+				xIndex: position.xIndex,
+				yIndex: position.yIndex
 			};
 
-			panelUsage.updateModule(module, panelUsage.info[0][0]);
+			panelUsage.updateModule(module, panelUsage.info[position.yIndex][position.xIndex]);
+			modules[module.id] = module;
+			modules.length += 1;
 
 			renderModule(module);
 			moduleIndex++;
@@ -415,12 +457,14 @@
 			$('.module[data-id=' + id + ']').remove();
 
 			delete modules[id];
+			modules.length -= 1;
 		};
 
 		this.clean = function () {
 			$panel.find('.module').remove();
 
 			modules = {};
+			modules.length = 0;
 		};
 
 		this.save = function () {

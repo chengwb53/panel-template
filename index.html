@@ -90,12 +90,17 @@
             var x = $('#xRate').val();
             var y = $('#yRate').val();
 
-            panelTemp.createMoudle({
+            var result = panelTemp.createMoudle({
                 xCells: x,
                 yCells: y,
                 drag: true,
                 swap: true
             });
+            if(result === -1) {
+                alert('x或y超过了最大值');
+            }else if(result === 0){
+                alert('没有合适的位置能够容纳' + x + '*' + y + '的模块');
+            }
         });
         $('.operate_box').on('click', '#saveTemplate', function () {
             //保存
