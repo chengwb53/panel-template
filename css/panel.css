@@ -95,8 +95,8 @@ input, textarea {border: 0;}
 }
 .module.drag {
     z-index: 99;
-    cursor: pointer;
-    border: 1px solid #bbb;
+    cursor: move;
+    border: 3px solid #bbb;
 }
 .delete_btn {
     position: absolute;
