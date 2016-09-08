@@ -42,7 +42,7 @@ input, textarea {border: 0;}
     position: relative;
     width: 125px;
     height: 36px;
-    left: 36px;
+    left: 41px;
     margin-bottom: 15px;
     font: normal 14px/36px "Microsoft YaHei";
     background-color: #253958;
@@ -84,14 +84,25 @@ input, textarea {border: 0;}
     background-color: #f7f7f7;
     z-index: 1;
 }
-.module {
+.tipBox, .module {
     position: absolute;
     border: 3px solid #fff;
     border-radius: 5px;
-    display: block;
     background-color: #dedede;
     z-index: 2;
     cursor: pointer;
+}
+.module {
+    display: block;
+}
+.tipBox {
+    background-color: transparent;
+    display: none;
+}
+.tipBox.second_top {
+    border: 3px solid #ff0;
+    display: block;
+    z-index: 98;
 }
 .module.drag {
     z-index: 99;

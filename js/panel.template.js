@@ -1,6 +1,6 @@
 /**
  * Created by chengwb on 2016/9/5.
- * demo 功能待扩充
+ * demo 功能待扩充，待添加对象深拷贝方法，返回拷贝的数据
  */
 (function (global, $, undefined) {
 	'use strict';
@@ -30,11 +30,13 @@
 		var self = this;
 
 		modules.length = 0;
+		options.xCells = parseInt(options.xCells);
+		options.yCells = parseInt(options.yCells);
 
 		//面板信息，cell的使用情况，映射模块的位置
 		var panelUsage = {
 			info: [],
-			getValidPosition: function(xCells, yCells) {
+			getValidPosition: function (xCells, yCells) {
 				var self = this;
 				//返回可用位置,如果一种有多个位置可用则只取第一个
 				var position = {
@@ -42,14 +44,14 @@
 					y: 0
 				};
 
-				if(modules.length === 0) {
+				if (modules.length === 0) {
 					return position;
 				}
 
 				function isValid(firstCell) {
-					for(var y = 0; y < yCells; y++) {
-						for(var x = 0; x < xCells; x++) {
-							if(self.info[firstCell.yIndex + y][firstCell.xIndex + x].useInfo.moduleId) {
+					for (var y = 0; y < yCells; y++) {
+						for (var x = 0; x < xCells; x++) {
+							if (self.info[firstCell.yIndex + y][firstCell.xIndex + x].useInfo.moduleId) {
 								return false;
 							}
 						}
@@ -59,13 +61,13 @@
 				}
 
 				var firstCell;
-				for(var y = 0; y <= options.yCells - yCells; y++) {
-					for(var x = 0; x <= options.xCells - xCells; x++) {
+				for (var y = 0; y <= options.yCells - yCells; y++) {
+					for (var x = 0; x <= options.xCells - xCells; x++) {
 						var cell = this.info[y][x];
 						if (!cell.useInfo.moduleId) {
 							firstCell = cell;
 
-							if(isValid(firstCell)){
+							if (isValid(firstCell)) {
 								return firstCell;
 							}
 						}
@@ -74,7 +76,110 @@
 
 				return null;
 			},
-			getNearestCell: function(point) {
+			isValidPosition: function (sourceModule, targetCell) {
+				var self = this;
+				var targetAreaModules = [];
+				var intersects = [];
+				targetAreaModules.length = 0;
+
+				//判断是否相交，如果相交判断目标区域相同位置是否有模块
+				function isIntersect(cell) {
+					//源模块四个角的cell索引坐标
+					//var points = [];
+					//points.push({xIndex: sourceModule.xIndex, yIndex: sourceModule.yIndex});
+					//points.push({xIndex: sourceModule.xIndex + sourceModule.xCells, yIndex: sourceModule.yIndex});
+					//points.push({xIndex: sourceModule.xIndex, yIndex: sourceModule.yIndex + sourceModule.yCells});
+					//points.push({xIndex: points[1].xIndex, yIndex: points[2].yIndex});
+					//
+					////目标区域
+					//var startXIndex = targetCell.xIndex;
+					//var endXIndex = targetCell.xIndex + sourceModule.xCells;
+					//var startYIndex = targetCell.yIndex;
+					//var endYIndex = targetCell.yIndex + sourceModule.yCells;
+					//
+					//for(var i = 0; i < points.length; i++) {
+					//	var point = points[i];
+					//
+					//	if (point.xIndex >= startXIndex && point.xIndex <= endXIndex &&
+					//		point.yIndex >= startYIndex && point.yIndex <= endYIndex) {
+					//		return true;
+					//	}
+					//}
+					//
+					//return false;
+
+					for(var y = 0; y < sourceModule.yCells; y++) {
+						for(var x = 0; x < sourceModule.xCells; x++) {
+							var sCell = panelUsage.info[sourceModule.yIndex + y][sourceModule.xIndex + x];
+							if(cell.xIndex === sCell.xIndex && cell.yIndex === sCell.yIndex) {
+								return {
+									xIndex: targetCell.xIndex + x,
+									yIndex: targetCell.yIndex + y
+								};
+							}
+						}
+					}
+
+					return false;
+				}
+				//intersects = isIntersect();
+				////待处理，获取具体相交的位置，判断目标区域该位置是否有模块
+				//if(intersects) {
+				//	return false;
+				//}
+
+				//判断是否是：在相交处源模块位置对应到目标模块的相应位置上
+				for(var y = 0; y < sourceModule.yCells; y++) {
+					for(var x = 0; x < sourceModule.xCells; x++) {
+						var tCell = panelUsage.info[targetCell.yIndex + y][targetCell.xIndex + x];
+						var result = isIntersect(tCell);
+						if(result){
+							var useInfo = panelUsage.info[result.yIndex][result.xIndex].useInfo;
+							if(useInfo.moduleId && useInfo.moduleId !== sourceModule.id) {
+								return false;
+							}
+						}
+					}
+				}
+
+				for (var y = 0; y < sourceModule.yCells; y++) {
+					for (var x = 0; x < sourceModule.xCells; x++) {
+						var cell = self.info[targetCell.yIndex + y][targetCell.xIndex + x];
+
+						//如果是自己则忽略，不是自己则继续判断
+						if (cell.useInfo.moduleId && cell.useInfo.moduleId !== sourceModule.id) {
+							//是不是模板的第一个单元块
+							if(cell.useInfo.xIndex === 0 && cell.useInfo.yIndex === 0) {
+								//完整性
+								var targetAreaModule = modules[cell.useInfo.moduleId];
+
+								if(targetAreaModule.xCells > (sourceModule.xCells - x) ||
+									targetAreaModule.yCells > (sourceModule.yCells - y)) {
+									return false;
+								}
+
+								targetAreaModules[targetAreaModule.id] = {
+									module:targetAreaModule,
+									relativeIndex: {
+										x: x,
+										y: y
+									}
+								};
+								targetAreaModules.length += 1;
+							} else {
+								if(targetAreaModules[cell.useInfo.moduleId]){
+									continue;
+								}
+
+								return false;
+							}
+						}
+					}
+				}
+
+				return targetAreaModules;
+			},
+			getNearestCell: function (point) {
 				var nearCell = point;
 				var minDistance = 99999999;
 
@@ -82,12 +187,12 @@
 					return Math.sqrt(Math.pow(pointA.x - pointB.x, 2) + Math.pow(pointA.y - pointB.y, 2));
 				}
 
-				for(var y = 0; y < options.yCells; y++) {
-					for(var x = 0; x < options.xCells; x++) {
+				for (var y = 0; y < options.yCells; y++) {
+					for (var x = 0; x < options.xCells; x++) {
 						var cell = this.info[y][x];
 						var distance = countDistance(point, cell);
 
-						if(distance < minDistance) {
+						if (distance < minDistance) {
 							minDistance = distance;
 							nearCell = cell;
 						}
@@ -96,27 +201,40 @@
 
 				return nearCell;
 			},
-			areaClean: function() {
+			areaClean: function () {
 
 			},
-			areaUpdate: function() {
+			areaUpdate: function () {
 
 			},
-			updateModule: function(module, target) {
+			cleanModule: function (module) {
+				for (var y = 0; y < module.yCells; y++) {
+					for (var x = 0; x < module.xCells; x++) {
+						var sourceCell = panelUsage.info[module.yIndex + y][module.xIndex + x];
+						sourceCell.clean();
+					}
+				}
+			},
+			cleanAllModule: function () {
+				for (var y = 0; y < options.yCells; y++) {
+					for (var x = 0; x < options.xCells; x++) {
+						var sourceCell = panelUsage.info[y][x];
+						sourceCell.clean();
+					}
+				}
+			},
+			updateModule: function (module, target) {
 				//需要先清空，在更新，否则同一块移动到之前的区域会有问题
-				for(var y = 0; y < module.yCells; y++) {
-					for(var x = 0; x < module.xCells; x++) {
+				for (var y = 0; y < module.yCells; y++) {
+					for (var x = 0; x < module.xCells; x++) {
 						//原模块区域重置
 						var sourceCell = panelUsage.info[module.yIndex + y][module.xIndex + x];
-						//sourceCell.clean();
-						sourceCell.useInfo.moduleId = null;
-						sourceCell.useInfo.xIndex = 0;
-						sourceCell.useInfo.yIndex = 0;
+						sourceCell.clean();
 					}
 				}
 
-				for(var y = 0; y < module.yCells; y++) {
-					for(var x = 0; x < module.xCells; x++) {
+				for (var y = 0; y < module.yCells; y++) {
+					for (var x = 0; x < module.xCells; x++) {
 						//新区域更新
 						var targetCell = panelUsage.info[target.yIndex + y][target.xIndex + x];
 						targetCell.useInfo.moduleId = module.id;
@@ -131,60 +249,53 @@
 				module.xIndex = target.xIndex;
 				module.yIndex = target.yIndex;
 			},
-			swapModule: function(sourceModule, targetModule) {
-				var xCells = sourceModule.xCells >= targetModule.xCells ? sourceModule.xCells : targetModule.xCells;
-				var yCells = sourceModule.yCells >= targetModule.yCells ? sourceModule.yCells : targetModule.yCells;
+			swapModule: function (sourceModule, targetModules, targetCell) {
+				//源模块区域重置
+				for (var y = 0; y < sourceModule.yCells; y++) {
+					for (var x = 0; x < sourceModule.xCells; x++) {
+						var sourceCell = panelUsage.info[sourceModule.yIndex + y][sourceModule.xIndex + x];
+						sourceCell.clean();
+					}
+				}
 
-				for(var y = 0; y < yCells; y++) {
-					for(var x = 0; x < xCells; x++) {
-						//待处理
-						if(sourceModule.yIndex + y < sourceModule.yCells && sourceModule.xIndex + x < sourceModule.xCells) {
-							//原区域
-							var sourceCell = panelUsage.info[sourceModule.yIndex + y][sourceModule.xIndex + x];
-							if (x >= targetModule.xCells || y >= targetModule.yCells) {
-								//sourceCell.clean();
-								sourceCell.useInfo.moduleId = null;
-								sourceCell.useInfo.xIndex = 0;
-								sourceCell.useInfo.yIndex = 0;
-							} else {
-								sourceCell.useInfo.moduleId = targetModule.id;
-								sourceCell.useInfo.xIndex = x;
-								sourceCell.useInfo.yIndex = y;
-							}
-						}
+				function updateModel(module, position) {
+					for(var y = 0; y < module.yCells; y++) {
+						for(var x = 0; x < module.xCells; x++) {
+							var cell = panelUsage.info[position.yIndex + y][position.xIndex + x];
 
-						//目标区域
-						var targetCell = panelUsage.info[targetModule.yIndex + y][targetModule.xIndex + x];
-						if(x >= sourceModule.xCells || y >= sourceModule.yCells){
-							//targetCell.clean();
-							targetCell.useInfo.moduleId = null;
-							targetCell.useInfo.xIndex = 0;
-							targetCell.useInfo.yIndex = 0;
-						}else{
-							targetCell.useInfo.moduleId = sourceModule.id;
-							targetCell.useInfo.xIndex = x;
-							targetCell.useInfo.yIndex = y;
+							cell.useInfo.moduleId = module.id;
+							cell.useInfo.xIndex = x;
+							cell.useInfo.yIndex = y;
 						}
 					}
 				}
 
+				//更新目标区域
+				updateModel(sourceModule, targetCell);
+				//更新源区域
+				for(var key in targetModules) {
+					var targetModule = targetModules[key];
+					var position = {
+						xIndex: sourceModule.xIndex + targetModule.relativeIndex.x,
+						yIndex: sourceModule.yIndex + targetModule.relativeIndex.y
+					};
+
+					//区域更新
+					updateModel(targetModule.module, position);
+
+					//模块信息更新
+					var module = modules[key];
+					module.x = panelUsage.info[position.yIndex][position.xIndex].x;
+					module.y = panelUsage.info[position.yIndex][position.xIndex].y;
+					module.xIndex = position.xIndex;
+					module.yIndex = position.yIndex;
+				}
+
 				//模块信息更新
-				var tempInfo = {
-					x: sourceModule.x,
-					y: sourceModule.y,
-					xIndex: sourceModule.xIndex,
-					yIndex: sourceModule.yIndex
-				};
-
-				sourceModule.x = targetModule.x;
-				sourceModule.y = targetModule.y;
-				sourceModule.xIndex = targetModule.xIndex;
-				sourceModule.yIndex = targetModule.yIndex;
-
-				targetModule.x = tempInfo.x;
-				targetModule.y = tempInfo.y;
-				targetModule.xIndex = tempInfo.xIndex;
-				targetModule.yIndex = tempInfo.yIndex;
+				sourceModule.x = targetCell.x;
+				sourceModule.y = targetCell.y;
+				sourceModule.xIndex = targetCell.xIndex;
+				sourceModule.yIndex = targetCell.yIndex;
 			}
 		};
 
@@ -201,9 +312,9 @@
 			var cells = $panel.find('.cell');
 			var counts = 0;
 
-			for(var y = 0; y < options.yCells; y++) {
+			for (var y = 0; y < options.yCells; y++) {
 				var yAxis = [];
-				for(var x = 0; x < options.xCells; x++) {
+				for (var x = 0; x < options.xCells; x++) {
 					var position = $(cells[counts++]).position();
 					yAxis.push({
 						x: position.left,
@@ -214,7 +325,12 @@
 							yIndex: 0
 						},
 						xIndex: x,
-						yIndex: y
+						yIndex: y,
+						clean: function () {
+							this.useInfo.moduleId = null;
+							this.useInfo.xIndex = 0;
+							this.useInfo.yIndex = 0;
+						}
 					})
 				}
 				axis.push(yAxis)
@@ -226,10 +342,32 @@
 
 		function onEvent() {
 			var module = {
-				startDrag: function(event) {
+				clean: function () {
+					this.target = null;
+					this.x = 0;
+					this.y = 0;
+					this.width = 0;
+					this.height = 0;
+					this.clickX = 0;
+					this.clickY = 0;
+				},
+				showTipBox: function (position) {
+					var $module = $(this.target);
+
+					$panel.find('.tipBox').css({
+						width: $module.width(),
+						height: $module.height(),
+						top: position.y + 'px',
+						left: position.x + 'px'
+					}).addClass('second_top');
+				},
+				hideTipBox: function () {
+					$panel.find('.tipBox').removeClass('second_top');
+				},
+				startDrag: function (event) {
 					var $target = $(event.target);
 					//判断是否可拖动
-					if($target.attr('data-drag') !== 'true') {
+					if ($target.attr('data-drag') !== 'true') {
 						return;
 					}
 
@@ -251,8 +389,8 @@
 					this.clickX = event.clientX - offset.left;
 					this.clickY = event.clientY - offset.top;
 				},
-				onDrag: function(event) {
-					if(!this.target) {
+				onDrag: function (event) {
+					if (!this.target) {
 						return;
 					}
 
@@ -275,18 +413,35 @@
 					this.x = endX;
 					this.y = endY;
 
+					/**
+					 * 现在是所有情况都显示提示框，后续改进可以放置或可以置换的才显示
+					 * （可以将判断信息保存起来，用于enddrag和避免目标区域相同时每次移动都要进行重复判断）
+					 * 也可增加原位置提示
+					 */
+					//获取最近的单元块,设置提示框
+					var nearCell = panelUsage.getNearestCell({
+						x: this.x,
+						y: this.y
+					});
+					this.showTipBox(nearCell);
+
 					//设置移动后的位置
 					$(this.target).css({
 						top: endY + 'px',
 						left: endX + 'px'
 					});
 				},
-				endDrag: function(event) {
-					if(!this.target) {
+				endDrag: function (event) {
+					var self = this;
+					if (!this.target) {
 						return;
 					}
 
-					//设置放置点
+					var position = {
+						x: 0,
+						y: 0
+					};
+					//获取最近的单元块
 					var targetCell = panelUsage.getNearestCell({
 						x: this.x,
 						y: this.y
@@ -295,50 +450,52 @@
 					var moduleId = $(this.target).attr('data-id');
 					var sourceModule = modules[moduleId];
 
-					//如果移动的目标位置已经有模块，先判断是否可以置换，如果可置换再判断单元块是否够，否则放回原位置
-					if(targetCell.useInfo.moduleId &&
-						targetCell.useInfo.moduleId !== sourceModule.id &&
-						!modules[targetCell.useInfo.moduleId].swap ){
-						//目标位置已经有模块而且不可置换，放回原处
-						targetCell = sourceModule;
-					}else{
-						//没有模块，或有模块且可置换，查看单元块是否够用
-						if(true) {
-							if(targetCell.useInfo.moduleId) {
-								var targetModule = modules[targetCell.useInfo.moduleId];
-
-								panelUsage.swapModule(sourceModule, targetModule);
-								targetCell = sourceModule;
-
-								$panel.find('.module[data-id=' + targetModule.id + ']').animate({
-									top: targetModule.y + 'px',
-									left: targetModule.x + 'px'
-								}, 200);
-							}else{
+					function changePosition() {
+						//位置是否有效（是否能够放下）,如果能放下且目标区域有完整的其它模块，则返回这些模块
+						var results = panelUsage.isValidPosition(sourceModule, targetCell);
+						if (results) {
+							//完整模块为0个，直接放
+							if(results.length === 0) {
 								panelUsage.updateModule(sourceModule, targetCell);
+								position.x = targetCell.x;
+								position.y = targetCell.y;
+							}else{
+								//多个完整模块，等位交换位置
+								panelUsage.swapModule(sourceModule, results, targetCell);
+
+								position.x = targetCell.x;
+								position.y = targetCell.y;
+
+								//遍历移动
+								for(var key in results) {
+									$panel.find('.module[data-id=' + key + ']').stop(true).animate({
+										top: modules[key].y + 'px',
+										left: modules[key].x + 'px'
+									}, 200);
+								}
 							}
-						}else {
-							targetCell = sourceModule;
+						} else {
+							//还原
+							position.x = sourceModule.x;
+							position.y = sourceModule.y;
 						}
 					}
+					changePosition();
 
-					$(this.target).animate({
-						top: targetCell.y + 'px',
-						left: targetCell.x + 'px'
-					}, 200);
+					$(this.target).stop(true).animate({
+						top: position.y + 'px',
+						left: position.x + 'px'
+					}, 200, function () {
+						//保持拖动块在最终停止前都处于最上层
+						$panel.find('.module[data-id=' + moduleId + ']').removeClass('drag');
 
+						self.hideTipBox();
 
-					$(this.target).removeClass('drag');
-					this.target = null;
+						console.log(panelUsage.info);
+						console.log(modules);
+					});
 
-					this.x = 0;
-					this.y = 0;
-					this.width = 0;
-					this.height = 0;
-					this.clickX = 0;
-					this.clickY = 0;
-
-					console.log(panelUsage.info);
+					self.clean();
 				}
 			};
 
@@ -357,6 +514,7 @@
 
 		function render() {
 			renderCell();
+			renderTipBox();
 			renderModules();
 		}
 
@@ -374,6 +532,10 @@
 				width: width / options.xCells - 6,
 				height: height / options.yCells - 6
 			});
+		}
+
+		function renderTipBox() {
+			$panel.append('<div class="tipBox second_top"></div>');
 		}
 
 		function renderModule(module) {
@@ -397,7 +559,7 @@
 			//renderModule();
 		}
 
-		this.refresh = function() {
+		this.refresh = function () {
 			render();
 		};
 
@@ -415,15 +577,17 @@
 				yIndex: 0
 			};
 
-			if(params.xCells > options.xCells || params.yCells > options.yCells) {
+			if (params.xCells > options.xCells || params.yCells > options.yCells) {
 				return -1;
 			}
+			params.xCells = parseInt(params.xCells);
+			params.yCells = parseInt(params.yCells);
 
 			if (modules.length !== 0) {
 				//根据大小计算放置位置，如果没有合适位置则提示
 				position = panelUsage.getValidPosition(params.xCells, params.yCells);
 				console.log(position);
-				if(!position) {
+				if (!position) {
 					return 0;
 				}
 			}
@@ -455,6 +619,7 @@
 
 		this.deleteMoudle = function (id) {
 			$('.module[data-id=' + id + ']').remove();
+			panelUsage.cleanModule(modules[id]);
 
 			delete modules[id];
 			modules.length -= 1;
@@ -462,6 +627,7 @@
 
 		this.clean = function () {
 			$panel.find('.module').remove();
+			panelUsage.cleanAllModule();
 
 			modules = {};
 			modules.length = 0;
@@ -476,7 +642,7 @@
 			$panel.empty();
 		};
 
-		$panel.on('click', '.delete_btn', function(event) {
+		$panel.on('click', '.delete_btn', function (event) {
 			var index = $(this).parents('.module').eq(0).attr('data-id');
 			self.deleteMoudle(index);
 		});

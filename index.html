@@ -19,9 +19,10 @@
 <script src="./js/panel.template.js"></script>
 
 <script type="text/template" id="createPanelTemp">
-    <label class="label">模板比例设置</label>
-    <label class="label_pre" for="xRate">X轴：</label><input id="xRate" class="input" type="text" name="xRate" value="4">
-    <label class="label_pre" for="yRate">Y轴：</label><input id="yRate" class="input" type="text" name="yRate" value="3">
+    <label class="label">模板设置</label>
+    <label class="label_pre" for="panelName">名称：</label><input id="panelName" class="input" type="text" name="panelName">
+    <label class="label_pre" for="xRate">X轴： </label><input id="xRate" class="input" type="text" name="xRate" value="4">
+    <label class="label_pre" for="yRate">Y轴： </label><input id="yRate" class="input" type="text" name="yRate" value="3">
     <button id="createTemplate" class="btn" type="button">创建模板</button>
 </script>
 <script type="text/template" id="createModuleTemp">
@@ -89,12 +90,17 @@
             //设置是否可拖动，是否可置换
             var x = $('#xRate').val();
             var y = $('#yRate').val();
+            var name = $('#panelName').val();
+
+            //检测是否已有同名模板
+            //获取服务器
 
             var result = panelTemp.createMoudle({
+                name: name,
                 xCells: x,
                 yCells: y,
                 drag: true,
-                swap: true
+                swap: false
             });
             if(result === -1) {
                 alert('x或y超过了最大值');
