@@ -20,15 +20,38 @@
 
 <script type="text/template" id="createPanelTemp">
     <label class="label">模板设置</label>
-    <label class="label_pre" for="panelName">名称：</label><input id="panelName" class="input" type="text" name="panelName">
+    <label class="label_pre" for="panelName">名称：</label><input id="panelName" class="input" type="text" name="panelName"
+                                                               value="daq">
     <label class="label_pre" for="xRate">X轴： </label><input id="xRate" class="input" type="text" name="xRate" value="4">
     <label class="label_pre" for="yRate">Y轴： </label><input id="yRate" class="input" type="text" name="yRate" value="3">
     <button id="createTemplate" class="btn" type="button">创建模板</button>
+    <button id="showTemplate" class="btn" type="button">查看模板</button>
+    <button id="editTemplate" class="btn" type="button">编辑模板</button>
+</script>
+<script type="text/template" id="showPanelTemp">
+    <label class="label">模板查看</label>
+    <label class="label_pre" for="panelName">名称：</label><input id="panelName" class="input" type="text" name="panelName"
+                                                               value="daq">
+    <label class="label_pre" for="xRate">X轴： </label><input id="xRate" class="input" type="text" name="xRate" disabled>
+    <label class="label_pre" for="yRate">Y轴： </label><input id="yRate" class="input" type="text" name="yRate" disabled>
+    <button id="showTemplate" class="btn" type="button">查看模板</button>
+    <button id="editTemplate" class="btn" type="button">编辑模板</button>
 </script>
 <script type="text/template" id="createModuleTemp">
-    <label class="label">模块比例设置</label>
-    <label class="label_pre" for="xRate">X轴：</label><input id="xRate" class="input" type="text" name="xRate" value="1">
-    <label class="label_pre" for="yRate">Y轴：</label><input id="yRate" class="input" type="text" name="yRate" value="1">
+    <label class="label_pre" for="panelName">名称：</label><input id="panelName" class="input" type="text" name="panelName" disabled>
+    <!--<label class="label">模版比例设置</label>-->
+    <!--<label class="label_pre" for="panelX">X轴： </label><input id="panelX" class="input" type="text" name="xRate">-->
+    <!--<label class="label_pre" for="panelY">Y轴： </label><input id="panelY" class="input" type="text" name="yRate">-->
+    <!--<button id="refreshPanel" class="btn" type="button">更新</button>-->
+    <!--<button id="resetPanel" class="btn" type="button">恢复上次</button>-->
+    <label class="label">模块设置</label>
+    <label class="label_pre" for="moduleX">X轴： </label><input id="moduleX" class="input" type="text" name="xRate"
+                                                              value="1">
+    <label class="label_pre" for="moduleY">Y轴： </label><input id="moduleY" class="input" type="text" name="yRate"
+                                                              value="1">
+    <label class="label_pre" for="url">url： </label><input id="url" class="input" type="text" name="url"
+                                                              value="http://www.daqsoft.com">
+    <label class="label_pre" for="moduleName">名称：</label><input id="moduleName" class="input" type="text" value="模块" name="moduleName">
     <button id="createModule" class="btn" type="button">创建模块</button>
     <button id="clearTemplate" class="btn" type="button">清空模板</button>
     <button id="saveTemplate" class="btn" type="button">保存模板</button>
@@ -36,11 +59,24 @@
 </script>
 
 <script>
+    //目前返回上一次是保存在这个页面，考虑保存到模板内部
     var panelW = 0;
     var panelH = 0;
     var cellW = 0;
     var cellH = 0;
     var panelTemp;
+    var templateIsCreated = false;
+    var historyRate = [];
+    var urls = [
+        "http://tams.daqsoft.com/rest/citypeoplecount/list.action?vcode=d80f699c062c8662fad3df86024e246c",
+        "http://tams.daqsoft.com/rest/bigDateValueAction/list.action?vcode=d80f699c062c8662fad3df86024e246c",
+        "http://tams.daqsoft.com/rest/piecount/list.action?vcode=d80f699c062c8662fad3df86024e246c",
+        "http://tams.daqsoft.com/rest/linecount/list.action?vcode=d80f699c062c8662fad3df86024e246c",
+        "http://tams.daqsoft.com/rest/ota/biglist.action?vcode=d80f699c062c8662fad3df86024e246c",
+        "http://tams.daqsoft.com/rest/realpeopleBig/list.action?vcode=d80f699c062c8662fad3df86024e246c"
+    ];
+    var counts = 0;
+    var panelName;
 
     $(function () {
         initPage();
@@ -50,9 +86,17 @@
     function initPage() {
         renderCreateTempBox();
 
+        setSize();
+    }
+
+    function setSize() {
+        var windowW = $(window).width();
+        var windowH = $(window).height();
+
         var $operateBox = $('.operate_box');
-        panelW = $(window.document).width() - $operateBox.outerWidth();
-        panelH = $(window.document).height();
+
+        panelW = windowW - $operateBox.outerWidth();
+        panelH = windowH;
         $operateBox.css({height: (panelH - parseInt($operateBox.css('padding-top')) - parseInt($operateBox.css('padding-bottom')))});
         $('#panelTemp').css({
             width: panelW,
@@ -72,44 +116,90 @@
     function renderCreateModuleBox() {
         $('.operate_box').empty();
         $('#createModuleTemp').tmpl().appendTo('.operate_box');
+
+        var rate = historyRate[0];
+        $('.operate_box #panelX').val(rate.xCells);
+        $('.operate_box #panelY').val(rate.yCells);
+        $('.operate_box #panelName').val(panelName);
+    }
+    function renderShowPanelBox(panel) {
+        $('.operate_box').empty();
+        $('#showPanelTemp').tmpl().appendTo('.operate_box');
+
+        $('.operate_box #panelX').val(panel.xCells);
+        $('.operate_box #panelY').val(panel.yCells);
     }
 
     function onOperate() {
         $('.operate_box').on('click', '#createTemplate', function () {
-            var xCells = $('#xRate').val();
-            var yCells = $('#yRate').val();
-
-            renderCreateModuleBox();
-            //创建对象
-            panelTemp = new PanelTemplate('#panelTemp', {
-                xCells: xCells,
-                yCells: yCells
-            });
-        });
-        $('.operate_box').on('click', '#createModule', function () {
-            //设置是否可拖动，是否可置换
-            var x = $('#xRate').val();
-            var y = $('#yRate').val();
+            var xCells = parseInt($('#xRate').val());
+            var yCells = parseInt($('#yRate').val());
             var name = $('#panelName').val();
 
+            if (!xCells || !yCells) {
+                alert('请输入合法比例！');
+                return;
+            }
+
+            if (!name) {
+                alert('请输入模板名称!');
+                return;
+            }
             //检测是否已有同名模板
             //获取服务器
 
+            //创建对象
+            panelTemp = new PanelTemplate('#panelTemp', {
+                name: name,
+                xCells: xCells,
+                yCells: yCells
+            });
+
+            templateIsCreated = true;
+            historyRate.push({
+                xCells: xCells,
+                yCells: yCells
+            });
+            panelName = name;
+
+            renderCreateModuleBox();
+        });
+        $('.operate_box').on('click', '#createModule', function () {
+            //设置是否可拖动，是否可置换
+            var xCells = parseInt($('#moduleX').val());
+            var yCells = parseInt($('#moduleY').val());
+            var name = $('#moduleName').val();
+            var url = $('#url').val();
+            if(!url) {
+                url = urls[counts++ % urls.length];
+            }
+
+            if (!xCells || !yCells) {
+                alert('请输入合法比例！');
+                return;
+            }
+            if (!name) {
+                alert('请输入模块名称！');
+                return;
+            }
+
             var result = panelTemp.createMoudle({
                 name: name,
-                xCells: x,
-                yCells: y,
+                url: url,
+                xCells: xCells,
+                yCells: yCells,
                 drag: true,
-                swap: false
+                swap: true//(Math.random() < 0.5) ? true : false
             });
-            if(result === -1) {
+            if (result === -1) {
                 alert('x或y超过了最大值');
-            }else if(result === 0){
-                alert('没有合适的位置能够容纳' + x + '*' + y + '的模块');
+            } else if (result === 0) {
+                alert('没有合适的位置能够容纳' + xCells + '*' + yCells + '的模块');
             }
         });
         $('.operate_box').on('click', '#saveTemplate', function () {
             //保存
+            panelTemp.save();
         });
         $('.operate_box').on('click', '#clearTemplate', function () {
             //清空模板上的模块
@@ -119,18 +209,110 @@
             //清空数据
             panelTemp.delete();
             renderCreateTempBox();
+
+            templateIsCreated = false;
+            historyRate = [];
+        });
+        $('.operate_box').on('click', '#refreshPanel', function () {
+            var rate = historyRate[historyRate.length - 1];
+            var x = $('#panelX').val();
+            var y = $('#panelY').val();
+
+            if (x === rate.xCells && y === rate.yCells) {
+                return;
+            }
+
+            //考虑如果没有模块，模块位置在新比例范围内可以缩小比例
+            if (x < rate.xCells || y < rate.yCells) {
+                alert('模板比例设置不能小于当前值！');
+                return;
+            }
+
+            panelTemp.refresh(x, y);
+
+            historyRate.push({
+                xCells: x,
+                yCells: y
+            });
+        });
+        $('.operate_box').on('click', '#resetPanel', function () {
+            if (historyRate.length < 2) {
+                return;
+            }
+
+            var rate = historyRate[historyRate.length - 2];
+            panelTemp.refresh(rate.xCells, rate.yCells);
+
+            historyRate.pop();
+
+            $('.operate_box #panelX').val(rate.xCells);
+            $('.operate_box #panelY').val(rate.yCells);
+        });
+
+        $('.operate_box').on('click', '#showTemplate', function () {
+            if (!panelTemp) {
+                alert('请先创建模板!');
+                return;
+            }
+
+            var name = $('#panelName').val();
+            if (!name) {
+                alert('请输入模板名称!');
+                return;
+            }
+
+            var panel = panelTemp.show(name);
+            if (!panel) {
+                alert('暂无名称为' + name + '的模板!');
+                return;
+            }
+
+            historyRate = [];
+            historyRate.push({
+                xCells: panel.xCells,
+                yCells: panel.yCells
+            });
+            panelName = panel.name;
+
+            renderShowPanelBox(panel);
+            templateIsCreated = true;
+        });
+        $('.operate_box').on('click', '#editTemplate', function () {
+            if (!panelTemp) {
+                alert('请先创建模板!');
+                return;
+            }
+
+            var name = $('#panelName').val();
+            if (!name) {
+                alert('请输入模板名称!');
+                return;
+            }
+
+            var panel = panelTemp.edit(name);
+            if (!panel) {
+                alert('暂无名称为' + name + '的模板!');
+                return;
+            }
+
+            historyRate = [];
+            historyRate.push({
+                xCells: panel.xCells,
+                yCells: panel.yCells
+            });
+            panelName = panel.name;
+
+            renderCreateModuleBox();
+            templateIsCreated = true;
         });
 
         $(window).on('resize', function () {
-//            panelW = $(window.document).width() - 210;
-//            panelH = $(window.document).height();
-//            $('.operate_box').css({height: $(window.document).height() - 30});
-//            $('#panelTemp').css({
-//                width: panelW,
-//                height: panelH
-//            });
+            setSize();
 
-//            panelTemp.refresh();
+            if (templateIsCreated) {
+                var rate = historyRate[historyRate.length - 1];
+                panelTemp.refresh(rate.xCells, rate.yCells);
+            }
         })
     }
 

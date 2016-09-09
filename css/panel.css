@@ -22,9 +22,9 @@ input, textarea {border: 0;}
 
 .operate_box {
     width: 170px;
-    height: 100%;
+    height: auto;
     padding: 30px 20px 0;
-    background-color: #284476;
+    background: url('../img/left_bg.png') no-repeat 0 0;
     float: left;
 }
 .label {
@@ -47,6 +47,7 @@ input, textarea {border: 0;}
     font: normal 14px/36px "Microsoft YaHei";
     background-color: #253958;
     color: #fff;
+    display: block;
 }
 .btn:hover {
     background-color: #162235;
@@ -109,6 +110,16 @@ input, textarea {border: 0;}
     cursor: move;
     border: 3px solid #bbb;
 }
+.module > .cover {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.1);
+    z-index: 96;
+}
 .delete_btn {
     position: absolute;
     width: 15px;
@@ -123,6 +134,7 @@ input, textarea {border: 0;}
     color: #fff;
     background-color: #b1b1b1;
     display: none;
+    z-index: 97;
 }
 .module:hover .delete_btn {
     display: block;
