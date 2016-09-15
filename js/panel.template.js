@@ -197,7 +197,7 @@
 
                                 //完整模块就保存起来，并记录区域中的相对坐标
                                 targetAreaModules[targetAreaModule.id] = {
-                                    module: deepCopy(targetAreaModule),
+                                    module: targetAreaModule,
                                     relativeIndex: {
                                         x: x,
                                         y: y
@@ -317,7 +317,7 @@
                     moveInfo.yMove = yMove > 0 ? 1 : (yMove < 0 ? -1 : 0);
 
                     if (checkFullModule(xMove, yMove)) {
-                        moveInfo.modules = deepCopy(targetAreaModules);
+                        moveInfo.modules = targetAreaModules;
                         return moveInfo;
                     } else {
                         return false;
@@ -381,13 +381,7 @@
                 var y = 0;
 
                 //需要先清空，在更新，否则同一块移动到之前的区域会有问题
-                for (y = 0; y < module.yCells; y++) {
-                    for (x = 0; x < module.xCells; x++) {
-                        //原模块区域重置
-                        var sourceCell = panelUsage.info[module.yIndex + y][module.xIndex + x];
-                        sourceCell.clean();
-                    }
-                }
+                this.cleanModule(module);
 
                 for (y = 0; y < module.yCells; y++) {
                     for (x = 0; x < module.xCells; x++) {
@@ -407,14 +401,9 @@
             },
             lineSwapModule: function (sourceModule, moveInfo, targetCell) {
                 //源模块区域重置
-                for (var y = 0; y < sourceModule.yCells; y++) {
-                    for (var x = 0; x < sourceModule.xCells; x++) {
-                        var sourceCell = panelUsage.info[sourceModule.yIndex + y][sourceModule.xIndex + x];
-                        sourceCell.clean();
-                    }
-                }
+                this.cleanModule(sourceModule);
 
-                function updateModel(module, position) {
+                function updateModule(module, position) {
                     for (var y = 0; y < module.yCells; y++) {
                         for (var x = 0; x < module.xCells; x++) {
                             var cell = panelUsage.info[position.yIndex + y][position.xIndex + x];
@@ -427,7 +416,7 @@
                 }
 
                 //更新目标区域
-                updateModel(sourceModule, targetCell);
+                updateModule(sourceModule, targetCell);
 
                 var xMove = moveInfo.xMove * sourceModule.xCells;
                 var yMove = moveInfo.yMove * sourceModule.yCells;
@@ -441,7 +430,7 @@
                     };
 
                     //区域更新
-                    updateModel(module, position);
+                    updateModule(module, position);
 
                     //模块信息更新
                     module.x = cell.x;
@@ -458,14 +447,9 @@
             },
             swapModule: function (sourceModule, targetModules, targetCell) {
                 //源模块区域重置
-                for (var y = 0; y < sourceModule.yCells; y++) {
-                    for (var x = 0; x < sourceModule.xCells; x++) {
-                        var sourceCell = panelUsage.info[sourceModule.yIndex + y][sourceModule.xIndex + x];
-                        sourceCell.clean();
-                    }
-                }
+                this.cleanModule(sourceModule);
 
-                function updateModel(module, position) {
+                function updateModule(module, position) {
                     for (var y = 0; y < module.yCells; y++) {
                         for (var x = 0; x < module.xCells; x++) {
                             var cell = panelUsage.info[position.yIndex + y][position.xIndex + x];
@@ -478,7 +462,7 @@
                 }
 
                 //更新目标区域
-                updateModel(sourceModule, targetCell);
+                updateModule(sourceModule, targetCell);
                 //更新源区域
                 for (var key in targetModules) {
                     var targetModule = targetModules[key];
@@ -488,7 +472,7 @@
                     };
 
                     //区域更新
-                    updateModel(targetModule.module, position);
+                    updateModule(targetModule.module, position);
 
                     //模块信息更新
                     var module = modules[key];
@@ -809,7 +793,7 @@
 
             function onEndDrag(event) {
                 module.endDrag(event);
-            };
+            }
 
             $panel.on('mousedown', '.module > .cover', onStartDrag);
             $(document).on('mousemove', onDraging);
