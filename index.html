@@ -154,6 +154,7 @@
                 xCells: xCells,
                 yCells: yCells
             });
+            panelTemp.render();
 
             templateIsCreated = true;
             historyRate.push({
@@ -212,6 +213,7 @@
 
             templateIsCreated = false;
             historyRate = [];
+            panelTemp = null;
         });
         $('.operate_box').on('click', '#refreshPanel', function () {
             var rate = historyRate[historyRate.length - 1];
@@ -250,17 +252,13 @@
         });
 
         $('.operate_box').on('click', '#showTemplate', function () {
-            if (!panelTemp) {
-                alert('请先创建模板!');
-                return;
-            }
-
             var name = $('#panelName').val();
             if (!name) {
                 alert('请输入模板名称!');
                 return;
             }
 
+            panelTemp = new PanelTemplate('#panelTemp', {});
             var panel = panelTemp.show(name);
             if (!panel) {
                 alert('暂无名称为' + name + '的模板!');
@@ -278,17 +276,13 @@
             templateIsCreated = true;
         });
         $('.operate_box').on('click', '#editTemplate', function () {
-            if (!panelTemp) {
-                alert('请先创建模板!');
-                return;
-            }
-
             var name = $('#panelName').val();
             if (!name) {
                 alert('请输入模板名称!');
                 return;
             }
 
+            panelTemp = new PanelTemplate('#panelTemp', {});
             var panel = panelTemp.edit(name);
             if (!panel) {
                 alert('暂无名称为' + name + '的模板!');

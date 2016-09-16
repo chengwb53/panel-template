@@ -125,7 +125,7 @@
             },
             /**
              * 等价交换（哈哈，暂时这么称呼），即交换区域的大小相等
-             * @param sourceModule 被拖动的模块
+             * @param sourceModule 被拖动的模块（源模块）
              * @param targetCell 被拖动模块将要放置的目标区域的首单元块
              * @returns {*}
              */
@@ -221,9 +221,9 @@
             },
             /**
              * 交换算法扩展，水平，垂直非等价（交换位置的区域大小可能不一样）交换
-             * @param sourceModule
-             * @param targetCell
-             * @returns {*}
+             * @param sourceModule 源模块
+             * @param targetCell 目标区域首个单元块
+             * @returns {*} 不可移动返回false；可移动返回目标区域所有完整快信息，和移动方向
              */
             lineMove: function (sourceModule, targetCell) {
                 var moveInfo = {
@@ -399,6 +399,12 @@
                 module.xIndex = target.xIndex;
                 module.yIndex = target.yIndex;
             },
+            /**
+             * 直线移动交换模块
+             * @param sourceModule 源模块
+             * @param moveInfo 目标区域模块集合和移动方向
+             * @param targetCell 目标区域首单元块
+             */
             lineSwapModule: function (sourceModule, moveInfo, targetCell) {
                 //源模块区域重置
                 this.cleanModule(sourceModule);
@@ -445,6 +451,12 @@
                 sourceModule.xIndex = targetCell.xIndex;
                 sourceModule.yIndex = targetCell.yIndex;
             },
+            /**
+             * 等价交换模块
+             * @param sourceModule 源模块
+             * @param targetModules 目标区域模块集合
+             * @param targetCell 目标区域首单元块
+             */
             swapModule: function (sourceModule, targetModules, targetCell) {
                 //源模块区域重置
                 this.cleanModule(sourceModule);
@@ -808,21 +820,6 @@
             }
         }
 
-        function render() {
-            init();
-
-            $panel.empty();
-            renderCell();
-            if (modules.length === 0 || panelUsage.info.length === 0) {
-                initPanelInfo();
-            } else {
-                refreshPanelInfo();
-            }
-
-            renderTipBox();
-            renderModules();
-        }
-
         function renderCell() {
             var cells = options.xCells * options.yCells;
             var html = '';
@@ -870,6 +867,11 @@
                 left: width / options.xCells * module.xIndex
             });
 
+            $('.module[data-id=' + module.id + '] .delete_btn').on('click', function (event) {
+                var index = $(this).parents('.module').eq(0).attr('data-id');
+                deleteMoudle(index);
+            });
+
             console.log(panelUsage.info);
             console.log(modules);
         }
@@ -885,6 +887,14 @@
             }
         }
 
+        function deleteMoudle(id) {
+            $('.module[data-id=' + id + ']').remove();
+            panelUsage.cleanModule(modules[id]);
+
+            delete modules[id];
+            modules.length -= 1;
+        }
+
         /**
          * 校正useInfo信息
          */
@@ -895,9 +905,29 @@
             }
         }
 
+        this.render = function() {
+            init();
+
+            $panel.empty();
+            renderCell();
+            if (modules.length === 0 || panelUsage.info.length === 0) {
+                initPanelInfo();
+            } else {
+                refreshPanelInfo();
+            }
+
+            renderTipBox();
+            renderModules();
+
+            if(templateEvent) {
+                templateEvent.off();
+            }
+            templateEvent = onEvent();
+        };
+
         this.refresh = function (xCells, yCells) {
             setRate(xCells, yCells);
-            render();
+            this.render();
         };
 
         function setRate(x, y) {
@@ -953,14 +983,6 @@
             return true;
         };
 
-        this.deleteMoudle = function (id) {
-            $('.module[data-id=' + id + ']').remove();
-            panelUsage.cleanModule(modules[id]);
-
-            delete modules[id];
-            modules.length -= 1;
-        };
-
         this.clean = function () {
             $panel.find('.module').remove();
             panelUsage.cleanAllModule();
@@ -986,19 +1008,22 @@
             for (var i = 0; i < templates.length; i++) {
                 if (templates[i].name === options.name) {
                     templates[i] = template;
-                    return;
+                    return true;
                 }
             }
 
             //新加
             templates.push(template);
+            return true;
         };
 
         this.delete = function () {
             this.clean();
             $panel.empty();
 
-            templateEvent.off();
+            if(templateEvent) {
+                templateEvent.off();
+            }
         };
 
         /**
@@ -1027,7 +1052,9 @@
                     $panel.empty();
                     renderModules();
 
-                    templateEvent.off();
+                    if(templateEvent) {
+                        templateEvent.off();
+                    }
                     return template;
                 }
             }
@@ -1041,6 +1068,7 @@
          * @returns {*}
          */
         this.edit = function (name) {
+            var module;
             modules = [];
             modules.length = 0;
             panelUsage.info = [];
@@ -1052,13 +1080,18 @@
                     options.xCells = template.xCells;
                     options.yCells = template.yCells;
                     for (var j = 0; j < template.modules.length; j++) {
+                        module = template.modules[j];
                         modules.length += 1;
-                        modules[template.modules[j].id] = template.modules[j];
-                    }
+                        modules[module.id] = module;
 
-                    templateEvent.off();
-                    templateEvent = onEvent();
-                    render();
+                        //moduleIndex
+                        if('module' + moduleIndex < module.id) {
+                            moduleIndex = parseInt(module.id.split('module')[1]);
+                        }
+                    }
+                    moduleIndex += 1;
+
+                    this.render();
 
                     //处理panelUseInfo
                     regulateUseInfo();
@@ -1069,15 +1102,6 @@
 
             return false;
         };
-
-        $panel.on('click', '.delete_btn', function (event) {
-            var index = $(this).parents('.module').eq(0).attr('data-id');
-            self.deleteMoudle(index);
-        });
-
-        render();
-
-        templateEvent = onEvent();
     }
 
     global.PanelTemplate = global.PanelTemplate || PanelTemplate;
