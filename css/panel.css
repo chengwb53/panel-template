@@ -68,7 +68,6 @@ input, textarea {border: 0;}
     height: 100%;
     float: left;
     text-align: center;
-    background: url('../img/bg.png') no-repeat center center;
 }
 .panel_box {
     position: relative;
@@ -85,18 +84,21 @@ input, textarea {border: 0;}
     background-color: #f7f7f7;
     z-index: 1;
 }
-.tipBox, .module {
+.module {
     position: absolute;
-    border: 3px solid #fff;
+    padding: 3px;
     border-radius: 5px;
-    background-color: #dedede;
+    background-color: #fff;
     z-index: 2;
     cursor: pointer;
-}
-.module {
     display: block;
 }
 .tipBox {
+    position: absolute;
+    border: 3px solid #fff;
+    border-radius: 5px;
+    z-index: 2;
+    cursor: pointer;
     background-color: transparent;
     display: none;
 }
@@ -108,7 +110,6 @@ input, textarea {border: 0;}
 .module.drag {
     z-index: 99;
     cursor: move;
-    border: 3px solid #bbb;
 }
 .module > .cover {
     position: absolute;
@@ -117,7 +118,7 @@ input, textarea {border: 0;}
     display: block;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.1);
+    /*background-color: rgba(0, 0, 0, 0.1);*/
     z-index: 96;
 }
 .delete_btn {
@@ -139,3 +140,30 @@ input, textarea {border: 0;}
 .module:hover .delete_btn {
     display: block;
  }
+.vertical_resize {
+    position: absolute;
+    cursor: s-resize;
+    height: 6px;
+    width: 100%;
+    bottom: 0;
+    left: 0;
+    z-index: 97;
+}
+.horizontal_resize {
+    position: absolute;
+    cursor: e-resize;
+    width: 6px;
+    height: 100%;
+    right: 0;
+    top: 0;
+    z-index: 97;
+}
+.both_resize {
+    position: absolute;
+    cursor: se-resize;
+    width: 12px;
+    height: 12px;
+    right: 0;
+    bottom: 0;
+    z-index: 98;
+}
