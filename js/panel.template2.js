@@ -20,7 +20,9 @@
             },
             endDrag: function (position) {
                 return position;
-            }
+            },
+            resizeX: 3,
+            resizeY: 3
         };
         var options = $.extend(defaults, options);
         var $panel = $(root);
@@ -32,42 +34,11 @@
         var moduleIndex = 0;
         var self = this;
         var templateEvent;
+        var panelResizeEvent;
 
         modules.length = 0;
         options.xCells = parseInt(options.xCells);
         options.yCells = parseInt(options.yCells);
-
-        function deepCopy(objectA) {
-            var objectB = {};
-            var isArray = false;
-
-            if (!objectA || (typeof objectA) !== 'object') {
-                return objectA;
-            }
-
-            if (Object.prototype.toString.call(objectA) === '[object Array]') {
-                isArray = true;
-                objectB = [];
-            }
-
-            //遍历objectA
-            for (var key in objectA) {
-                var subMember = objectA[key];
-
-                //如果subMember是object则继续
-                if ((typeof subMember) === 'object') {
-                    subMember = deepCopy(subMember);
-                }
-
-                if (isArray) {
-                    objectB.push(subMember);
-                } else {
-                    objectB[key] = subMember;
-                }
-            }
-
-            return objectB;
-        }
 
         //面板信息，cell的使用情况，映射模块的坐标和位置
         var panelUsage = {
@@ -499,6 +470,27 @@
                 sourceModule.y = targetCell.y;
                 sourceModule.xIndex = targetCell.xIndex;
                 sourceModule.yIndex = targetCell.yIndex;
+            },
+            resizeModule: function (module, target, resizeInfo) {
+                var x = 0;
+                var y = 0;
+
+                //需要先清空，在更新，否则同一块移动到之前的区域会有问题
+                this.cleanModule(module);
+
+                for (y = 0; y < resizeInfo.yCells; y++) {
+                    for (x = 0; x < resizeInfo.xCells; x++) {
+                        //新区域更新
+                        var targetCell = panelUsage.info[target.yIndex + y][target.xIndex + x];
+                        targetCell.useInfo.moduleId = module.id;
+                        targetCell.useInfo.xIndex = x;
+                        targetCell.useInfo.yIndex = y;
+                    }
+                }
+
+                //模块信息更新
+                module.xCells = resizeInfo.xCells;
+                module.yCells = resizeInfo.yCells;
             }
         };
 
@@ -541,7 +533,6 @@
             }
 
             panelUsage.info = axis;
-            console.log(axis);
         }
 
         function refreshPanelInfo() {
@@ -606,8 +597,8 @@
                 }
             }
         }
-
-        function onEvent() {
+        // 拖动事件
+        function onDragEvent() {
             var module = {
                 clean: function () {
                     this.target = null;
@@ -620,7 +611,6 @@
                 },
                 showTipBox: function (position) {
                     var $module = $(this.target);
-
                     $panel.find('.tipBox').css({
                         width: $module.width(),
                         height: $module.height(),
@@ -660,7 +650,6 @@
                     if (!this.target) {
                         return;
                     }
-
                     //移动结束位置
                     var endX = event.clientX - this.clickX - position.x;
                     var endY = event.clientY - this.clickY - position.y;
@@ -786,12 +775,13 @@
                         $panel.find('.module[data-id=' + moduleId + ']').removeClass('drag');
 
                         self.hideTipBox();
-
-                        console.log(panelUsage.info);
-                        console.log(modules);
                     });
 
                     self.clean();
+                },
+                showModules: function() {
+                    console.log('drag:');
+                    console.log(modules);
                 }
             };
 
@@ -800,6 +790,7 @@
             }
 
             function onDraging(event) {
+                //module.showModules();
                 module.onDrag(event);
             }
 
@@ -807,19 +798,296 @@
                 module.endDrag(event);
             }
 
+            function off() {
+                $panel.off('mousedown', '.module > .cover', onStartDrag);
+                $(document).off('mousemove', onDraging);
+                $(document).off('mouseup', onEndDrag);
+            }
+
+            off();
+
             $panel.on('mousedown', '.module > .cover', onStartDrag);
             $(document).on('mousemove', onDraging);
             $(document).on('mouseup', onEndDrag);
 
             return {
-                off: function () {
-                    $panel.off('mousedown', '.module > .cover', onStartDrag);
-                    $(document).off('mousemove', onDraging);
-                    $(document).off('mouseup', onEndDrag);
-                }
+                off: off
             }
         }
+        // 向下，右改变模块大小事件
+        function onResizeEvent() {
+            var module = {
+                showTipBox: function () {
+                    var position = this.$target.position();
 
+                    $panel.find('.tipBox').css({
+                        width: this.tempX * this.cell.width - 6,
+                        height: this.tempY * this.cell.height - 6,
+                        top: position.top,
+                        left: position.left
+                    }).addClass('second_top');
+                },
+                hideTipBox: function () {
+                    $panel.find('.tipBox').removeClass('second_top');
+                },
+                startResize: function(event) {
+                    var $target = $(event.target).parents('.module').eq(0);
+                    //判断是否可拉伸
+                    if ($target.attr('data-resize') !== 'true') {
+                        return;
+                    }
+
+                    this.info = modules[$target.attr('data-id')];
+                    this.$target = $target;
+
+                    if ($(event.target).hasClass('horizontal_resize')) {
+                        this.resizeType = 'horizontal';
+                    } else if ($(event.target).hasClass('vertical_resize')) {
+                        this.resizeType = 'vertical';
+                    } else if ($(event.target).hasClass('both_resize')) {
+                        this.resizeType = 'equalProportion';
+                    } else {
+                        return;
+                    }
+
+                    this.resize = true;
+
+                    //模块相对模板左上角的位置
+                    var position = $target.position();
+                    this.x = position.left;
+                    this.y = position.top;
+
+                    //模块大小
+                    this.width = $target.width();
+                    this.height = $target.height();
+
+                    //鼠标点击点
+                    this.clickX = event.clientX;
+                    this.clickY = event.clientY;
+
+                    //
+                    this.cell = {
+                        width: width / options.xCells,
+                        height: height / options.yCells
+                    };
+                },
+                onResize: function(event) {
+                    if(!this.resize) {
+                        return;
+                    }
+                    var self = this;
+
+	                /**
+                     * 处理水平和垂直方向的拉伸
+                     * @param params
+                     *      cells 水平或垂直方向上单元块的个数
+                     *      resizeLimits 对应方向上拉伸时限制的最大单元块个数
+                     *      direction -1表示缩小，1表示放大，0表示不变
+                     *      moveDistance 对应方向上的移动距离（像素）
+                     *      singleDistance 单元块的高（垂直方向）或宽（水平方向）
+                     * @returns {*|HTMLCollection} 拉伸处理后模块的单元块个数（对应方向上的）
+                     * 备注：params中的参数必须一致，处理水平方向则全部传水平方向的相关参数，处理垂直方向则全部传垂直方向的距离
+	                 */
+                    function resizeModule(params) {
+                        var i = 0;
+                        var tempCells = params.cells;//水平或垂直方向上单元块的个数
+
+                        function haveModule(addCells) {
+                            var haveModule = false;
+                            var startX = 0;
+                            var startY = 0;
+                            var endY = 0;
+                            var endX = 0;
+
+                            if (addCells <= 0) {
+                                return haveModule;
+                            }
+
+                            if(params.type === 'horizontal') {
+                                startY = self.info.yIndex;
+                                endY = self.info.yIndex + self.info.yCells;
+                                startX = self.info.xIndex + self.info.xCells;
+                                endX = self.info.xIndex + self.info.xCells + addCells;
+                            } else if (params.type = 'vertical') {
+                                startY = self.info.yIndex + self.info.yCells;
+                                endY = self.info.yIndex + self.info.yCells + addCells;
+                                startX = self.info.xIndex;
+                                endX = self.info.xIndex + self.info.xCells;
+                            }
+
+                            for(var y = startY; y < endY; y++) {
+                                for(var x = startX; x < endX; x++) {
+                                    //如果鼠标拉伸位置大于了面板的位置则当做有模板处理
+                                    if(x >= options.xCells || y >= options.yCells ||
+                                        panelUsage.info[y][x].useInfo.moduleId) {
+                                        haveModule = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            return haveModule;
+                        }
+
+                        //某方向上的单元块个数是否小于等于该方向上的拉伸限制个数
+                        if (params.cells <= params.resizeLimits ) {
+                            if (params.direction > 0) {
+                                //根据移动距离，算出拉长了几个单元格
+                                for (i = 0; i <= params.resizeLimits - params.cells; i++) {
+                                    //判断当前位置是否有模块
+                                    if(haveModule(i)) {
+                                        i -= 1;
+                                        break;
+                                    }
+
+                                    if (params.moveDistance > i * params.singleDistance) {
+                                        continue;
+                                    } else {
+                                        break;
+                                    }
+                                }
+                            } else if (params.direction < 0) {
+                                //根据移动距离，算出放缩了几个单元格
+                                for (i = 1; i <= params.cells; i++) {
+                                    if (params.moveDistance > i * params.singleDistance) {
+                                        continue;
+                                    } else {
+                                        break;
+                                    }
+                                }
+
+                                i -= 1;
+                            }
+                        } else {
+                            //如果单元块数大于拉伸限制个数，则不能被拉长
+                            if (params.direction < 0) {
+                                for (i = 1; i < params.cells; i++) {
+                                    if (params.moveDistance > i * params.singleDistance) {
+                                        continue;
+                                    } else {
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        tempCells += i * params.direction;
+
+                        //结果校正，最小为一个单元格，最大为拉伸限制个数
+                        if(tempCells < 1) {
+                            tempCells = 1;
+                        } else if (tempCells > params.resizeLimits) {
+                            tempCells = params.resizeLimits;
+                        }
+
+                        return tempCells;
+                    }
+
+                    //获取鼠标移动距离
+                    var moveX = event.clientX - this.clickX;
+                    var moveY = event.clientY - this.clickY;
+                    var hDirection = moveX > 0 ? 1 : (moveX < 0 ? - 1 : 0);//1表示right,-1表示left,0表示不变
+                    var vDirection = moveY > 0 ? 1 : (moveY < 0 ? -1 : 0);//1表示bottom,-1表示top,0表示不变
+                    var absMoveX = Math.abs(moveX);
+                    var absMoveY = Math.abs(moveY);
+                    var tempWidth = this.width;
+                    var tempHeight = this.height;
+
+                    this.tempX = this.info.xCells;
+                    this.tempY = this.info.yCells;
+                    //水平方向
+                    if (this.resizeType === 'equalProportion' || this.resizeType === 'horizontal') {
+                        this.tempX = resizeModule({
+                            type: 'horizontal',
+                            cells: this.info.xCells,
+                            resizeLimits: options.resizeX,
+                            direction: hDirection,
+                            moveDistance: absMoveX,
+                            singleDistance: this.cell.width
+                        });
+
+                        tempWidth = this.width + moveX;
+                    }
+                    //垂直方向
+                    if (this.resizeType === 'equalProportion' || this.resizeType === 'vertical') {
+                        this.tempY = resizeModule({
+                            type: 'vertical',
+                            cells: this.info.yCells,
+                            resizeLimits: options.resizeY,
+                            direction: vDirection,
+                            moveDistance: absMoveY,
+                            singleDistance: this.cell.height
+                        });
+
+                        tempHeight = this.height + moveY;
+                    }
+
+                    this.$target.css({
+                        width: tempWidth < 0 ? 0 : tempWidth,
+                        height: tempHeight < 0 ? 0 : tempHeight
+                    });
+
+                    this.showTipBox();
+                },
+                endResize: function(event) {
+                    if(!this.resize) {
+                        return;
+                    }
+                    this.resize = false;
+
+                    //根据结果动画拉伸
+                    this.hideTipBox();
+
+                    panelUsage.resizeModule(this.info, panelUsage.info[this.info.yIndex][this.info.xIndex], {
+                        xCells: this.tempX,
+                        yCells: this.tempY
+                    });
+
+                    this.$target.animate({
+                        width: this.tempX * this.cell.width - 6,
+                        height: this.tempY * this.cell.height - 6
+                    }, 200);
+                }
+            };
+
+            function onStartResize(event) {
+                module.startResize(event);
+            }
+
+            function onResizing(event) {
+                //module.showModules();
+                module.onResize(event);
+            }
+
+            function onEndResize(event) {
+                module.endResize(event);
+            }
+
+            function off() {
+                $panel.off('mousedown',
+                    '.module > .horizontal_resize,' +
+                    '.module > .vertical_resize,' +
+                    '.module > .both_resize', onStartResize);
+
+                $(document).off('mousemove', onResizing);
+                $(document).off('mouseup', onEndResize);
+            }
+
+            off();
+
+            $panel.on('mousedown',
+                '.module > .horizontal_resize,' +
+                '.module > .vertical_resize,' +
+                '.module > .both_resize', onStartResize);
+            $(document).on('mousemove', onResizing);
+            $(document).on('mouseup', onEndResize);
+
+
+            return {
+                off: off
+            }
+        }
+        // render  cell 格子
         function renderCell() {
             var cells = options.xCells * options.yCells;
             var html = '';
@@ -835,47 +1103,57 @@
                 height: height / options.yCells - 6
             });
         }
-
+        // 添加一个提示框，拖动后放置的位置
         function renderTipBox() {
             $panel.append('<div class="tipBox second_top"></div>');
         }
-
+        // render 单个模块
         function renderModule(module) {
-            $panel.append('<div class="module" ondragstart="return false" ondrag="return false" data-id="' + module.id + '">' +
-                '<span class="delete_btn" ondragstart="return false" ondrag="return false">x</span>' +
+            $panel.append('<div class="module" ondragstart="return false" ondrag="return false" data-show="'+ module.show +'" data-id="' + module.id + '">' +
+                '<span class="oper_module_btn edit_btn" ondragstart="return false" ondrag="return false">编辑</span>' +
+                '<span class="oper_module_btn delete_btn" ondragstart="return false" ondrag="return false">关闭</span>' +
                 '<iframe src="' + module.url + '"></iframe>' +
-                '<span class="cover"></span>' +
                 '</div>');
+
+            var userAttr = {
+                'data-drag': module.drag ? 'true' : 'false',
+                'data-swap': module.swap ? 'true' : 'false',
+                'data-resize': module.resize ? 'true' : 'false'
+            };
 
             //var position = panelUsage.info[module.yIndex][module.xIndex];
             //-6是border，为了展示块之间的间隔效果
-            $('.module[data-id=' + module.id + ']').css({
+            var $model = $('.module[data-id=' + module.id + ']');
+            $model.css({
                 width: width / options.xCells * module.xCells - 6,
                 height: height / options.yCells * module.yCells - 6,
                 top: height / options.yCells * module.yIndex,
                 left: width / options.xCells * module.xIndex
-            }).attr({
-                'data-drag': module.drag ? 'true' : 'false',
-                'data-swap': module.swap ? 'true' : 'false'
-            });
+            }).attr(userAttr);
+
+            if(userAttr['data-drag'] === 'true'){
+                $model.append('<span class="cover"></span>');
+            }
+
+            //如果属性是可拉伸
+            if(userAttr['data-resize'] === 'true') {
+                $model.append('<div class="horizontal_resize"></div>' +
+                '<div class="vertical_resize"></div>' +
+                '<div class="both_resize"></div>')
+            }
 
             //
-            $('.module[data-id=' + module.id + '] > iframe').css({
-                width: width / options.xCells * module.xCells - 6,
-                height: height / options.yCells * module.yCells - 6,
-                top: height / options.yCells * module.yIndex,
-                left: width / options.xCells * module.xIndex
+            $model.find('iframe').eq(0).css({
+                width: '100%',
+                height: '100%'
             });
 
-            $('.module[data-id=' + module.id + '] .delete_btn').on('click', function (event) {
+            $model.find('.delete_btn').eq(0).on('click', function (event) {
                 var index = $(this).parents('.module').eq(0).attr('data-id');
                 deleteMoudle(index);
             });
-
-            console.log(panelUsage.info);
-            console.log(modules);
         }
-
+        // 渲染多个模块
         function renderModules() {
             //遍历modules，根据位置设置
             if (modules.length === 0) {
@@ -886,7 +1164,7 @@
                 renderModule(modules[key]);
             }
         }
-
+        // 根据id删除模块
         function deleteMoudle(id) {
             $('.module[data-id=' + id + ']').remove();
             panelUsage.cleanModule(modules[id]);
@@ -922,7 +1200,18 @@
             if(templateEvent) {
                 templateEvent.off();
             }
-            templateEvent = onEvent();
+            templateEvent = onDragEvent();
+
+            if (panelResizeEvent) {
+                panelResizeEvent.off();
+            }
+            panelResizeEvent = onResizeEvent();
+
+            $('.wrap_con').scroll(function(e){
+                init();
+            })
+
+
         };
 
         this.refresh = function (xCells, yCells) {
@@ -952,7 +1241,6 @@
             if (modules.length !== 0) {
                 //根据大小计算放置位置，如果没有合适位置则提示
                 position = panelUsage.getInitPosition(params.xCells, params.yCells);
-                console.log(position);
                 if (!position) {
                     return 0;
                 }
@@ -967,6 +1255,8 @@
                 yCells: params.yCells,
                 drag: params.drag,
                 swap: params.swap,
+                resize: params.resize,
+                show: params.show,
                 x: position.x,
                 y: position.y,
                 xIndex: position.xIndex,
@@ -1005,16 +1295,16 @@
             }
 
             //存在则更新
-            for (var i = 0; i < templates.length; i++) {
+            /*for (var i = 0; i < templates.length; i++) {
                 if (templates[i].name === options.name) {
                     templates[i] = template;
                     return true;
                 }
-            }
+            }*/
 
             //新加
-            templates.push(template);
-            return true;
+            /*templates.push(template);*/
+            return template;
         };
 
         this.delete = function () {
@@ -1023,6 +1313,9 @@
 
             if(templateEvent) {
                 templateEvent.off();
+            }
+            if (panelResizeEvent) {
+                panelResizeEvent.off();
             }
         };
 
@@ -1055,6 +1348,9 @@
                     if(templateEvent) {
                         templateEvent.off();
                     }
+                    if (panelResizeEvent) {
+                        panelResizeEvent.off();
+                    }
                     return template;
                 }
             }
@@ -1085,8 +1381,9 @@
                         modules[module.id] = module;
 
                         //moduleIndex
-                        if('module' + moduleIndex < module.id) {
-                            moduleIndex = parseInt(module.id.split('module')[1]);
+	                    var index = parseInt(module.id.split('module')[1])
+                        if(moduleIndex < index) {
+                            moduleIndex = index;
                         }
                     }
                     moduleIndex += 1;
@@ -1103,6 +1400,8 @@
             return false;
         };
     }
+
+
 
     global.PanelTemplate = global.PanelTemplate || PanelTemplate;
 
